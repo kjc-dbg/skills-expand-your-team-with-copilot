@@ -12,6 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const searchInput = document.getElementById("activity-search");
   const searchButton = document.getElementById("search-button");
   const categoryFilters = document.querySelectorAll(".category-filter");
+  const difficultyFilters = document.querySelectorAll(".difficulty-filter");
   const dayFilters = document.querySelectorAll(".day-filter");
   const timeFilters = document.querySelectorAll(".time-filter");
 
@@ -24,6 +25,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const loginForm = document.getElementById("login-form");
   const closeLoginModal = document.querySelector(".close-login-modal");
   const loginMessage = document.getElementById("login-message");
+  const themeToggleButton = document.getElementById("theme-toggle-button");
 
   // Activity categories with corresponding colors
   const activityTypes = {
@@ -37,6 +39,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // State for activities and filters
   let allActivities = {};
   let currentFilter = "all";
+  let currentDifficulty = "all";
   let searchQuery = "";
   let currentDay = "";
   let currentTimeRange = "";
@@ -51,6 +54,21 @@ document.addEventListener("DOMContentLoaded", () => {
     weekend: { days: ["Saturday", "Sunday"] }, // Weekend days
   };
 
+  const difficultyLabels = {
+    beginner: "Beginner",
+    intermediate: "Intermediate",
+    advanced: "Advanced",
+  };
+
+  function normalizeDifficultyLevel(difficultyLevel) {
+    if (!difficultyLevel || typeof difficultyLevel !== "string") {
+      return "";
+    }
+
+    const normalizedLevel = difficultyLevel.trim().toLowerCase();
+    return difficultyLabels[normalizedLevel] ? normalizedLevel : "";
+  }
+
   // Initialize filters from active elements
   function initializeFilters() {
     // Initialize day filter
@@ -63,6 +81,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const activeTimeFilter = document.querySelector(".time-filter.active");
     if (activeTimeFilter) {
       currentTimeRange = activeTimeFilter.dataset.time;
+    }
+
+    // Initialize difficulty filter
+    const activeDifficultyFilter = document.querySelector(
+      ".difficulty-filter.active"
+    );
+    if (activeDifficultyFilter) {
+      currentDifficulty = activeDifficultyFilter.dataset.difficulty;
     }
   }
 
@@ -166,6 +192,29 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  function updateThemeButton(theme) {
+    if (theme === "dark") {
+      themeToggleButton.textContent = "☀️ Light mode";
+    } else {
+      themeToggleButton.textContent = "🌙 Dark mode";
+    }
+  }
+
+  function setTheme(theme) {
+    if (theme === "dark") {
+      document.body.classList.add("dark-mode");
+    } else {
+      document.body.classList.remove("dark-mode");
+    }
+    localStorage.setItem("themePreference", theme);
+    updateThemeButton(theme);
+  }
+
+  function initializeTheme() {
+    const savedTheme = localStorage.getItem("themePreference") || "light";
+    setTheme(savedTheme);
+  }
+
   // Login function
   async function login(username, password) {
     try {
@@ -238,6 +287,12 @@ document.addEventListener("DOMContentLoaded", () => {
   loginButton.addEventListener("click", openLoginModal);
   logoutButton.addEventListener("click", logout);
   closeLoginModal.addEventListener("click", closeLoginModalHandler);
+  themeToggleButton.addEventListener("click", () => {
+    const nextTheme = document.body.classList.contains("dark-mode")
+      ? "light"
+      : "dark";
+    setTheme(nextTheme);
+  });
 
   // Close login modal when clicking outside
   window.addEventListener("click", (event) => {
@@ -437,11 +492,26 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       }
 
+      // Apply difficulty filter
+      const normalizedDifficulty = normalizeDifficultyLevel(
+        details.difficulty_level
+      );
+      if (currentDifficulty === "all" && normalizedDifficulty) {
+        return;
+      }
+      if (
+        currentDifficulty !== "all" &&
+        normalizedDifficulty !== currentDifficulty
+      ) {
+        return;
+      }
+
       // Apply search filter
       const searchableContent = [
         name.toLowerCase(),
         details.description.toLowerCase(),
         formatSchedule(details).toLowerCase(),
+        difficultyLabels[normalizedDifficulty]?.toLowerCase() || "",
       ].join(" ");
 
       if (
@@ -495,9 +565,22 @@ document.addEventListener("DOMContentLoaded", () => {
     // Determine activity type
     const activityType = getActivityType(name, details.description);
     const typeInfo = activityTypes[activityType];
+    const normalizedDifficulty = normalizeDifficultyLevel(
+      details.difficulty_level
+    );
+    const difficultyLabel = difficultyLabels[normalizedDifficulty];
 
     // Format the schedule using the new helper function
     const formattedSchedule = formatSchedule(details);
+
+    const shareTitle = `${name} at Mergington High School`;
+    const shareText = `Check out this activity: ${name}. ${details.description}`;
+    const shareUrl = new URL(window.location.href);
+    shareUrl.searchParams.set("activity", name);
+    const encodedEmailSubject = encodeURIComponent(shareTitle);
+    const encodedEmailBody = encodeURIComponent(
+      `${shareText}\n\nLearn more: ${shareUrl.toString()}`
+    );
 
     // Create activity tag
     const tagHtml = `
@@ -523,6 +606,11 @@ document.addEventListener("DOMContentLoaded", () => {
       ${tagHtml}
       <h4>${name}</h4>
       <p>${details.description}</p>
+      ${
+        difficultyLabel
+          ? `<p class="activity-difficulty"><strong>Difficulty:</strong> ${difficultyLabel}</p>`
+          : ""
+      }
       <p class="tooltip">
         <strong>Schedule:</strong> ${formattedSchedule}
         <span class="tooltip-text">Regular meetings at this time throughout the semester</span>
@@ -569,6 +657,31 @@ document.addEventListener("DOMContentLoaded", () => {
         `
         }
       </div>
+      <div class="share-actions">
+        <button
+          class="share-button"
+          data-action="share"
+          type="button"
+        >
+          Share
+        </button>
+        <button
+          class="share-button"
+          data-action="copy"
+          type="button"
+        >
+          Copy Link
+        </button>
+        <a
+          class="share-button share-link-button"
+          data-action="email"
+          href="mailto:?subject=${encodedEmailSubject}&body=${encodedEmailBody}"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Email
+        </a>
+      </div>
     `;
 
     // Add click handlers for delete buttons
@@ -586,6 +699,44 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
     }
+
+    const shareButtons = activityCard.querySelectorAll(".share-button");
+    shareButtons.forEach((button) => {
+      button.addEventListener("click", async (event) => {
+        const action = event.currentTarget.dataset.action;
+        const url = shareUrl.toString();
+        const title = shareTitle;
+        const text = shareText;
+
+        if (action === "share") {
+          if (navigator.share) {
+            try {
+              await navigator.share({ title, text, url });
+            } catch (error) {
+              if (error.name !== "AbortError") {
+                showMessage("Sharing failed. Please try again.", "error");
+              }
+            }
+          } else {
+            try {
+              await navigator.clipboard.writeText(url);
+              showMessage("Activity link copied to clipboard.", "success");
+            } catch (error) {
+              showMessage("Unable to copy link. Please copy it manually.", "error");
+            }
+          }
+        }
+
+        if (action === "copy") {
+          try {
+            await navigator.clipboard.writeText(url);
+            showMessage("Activity link copied to clipboard.", "success");
+          } catch (error) {
+            showMessage("Unable to copy link. Please copy it manually.", "error");
+          }
+        }
+      });
+    });
 
     activitiesList.appendChild(activityCard);
   }
@@ -611,6 +762,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Update current filter and display filtered activities
       currentFilter = button.dataset.category;
+      displayFilteredActivities();
+    });
+  });
+
+  // Add event listeners to difficulty filter buttons
+  difficultyFilters.forEach((button) => {
+    button.addEventListener("click", () => {
+      // Update active class
+      difficultyFilters.forEach((btn) => btn.classList.remove("active"));
+      button.classList.add("active");
+
+      // Update current difficulty and display filtered activities
+      currentDifficulty = button.dataset.difficulty;
       displayFilteredActivities();
     });
   });
@@ -862,6 +1026,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   // Initialize app
+  initializeTheme();
   checkAuthentication();
   initializeFilters();
   fetchActivities();
