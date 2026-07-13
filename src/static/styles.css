@@ -287,6 +287,35 @@ section h3 {
   border: none;
 }
 
+.share-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.share-button {
+  background-color: var(--background);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  padding: 5px 10px;
+  border-radius: 16px;
+  font-size: 0.75rem;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.share-button:hover {
+  background-color: var(--primary-light);
+  color: var(--primary-text);
+  border-color: var(--primary-light);
+}
+
+.share-link-button {
+  display: inline-flex;
+  align-items: center;
+}
+
 button {
   background-color: var(--primary);
   color: white;

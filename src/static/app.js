@@ -499,6 +499,15 @@ document.addEventListener("DOMContentLoaded", () => {
     // Format the schedule using the new helper function
     const formattedSchedule = formatSchedule(details);
 
+    const shareTitle = `${name} at Mergington High School`;
+    const shareText = `Check out this activity: ${name}. ${details.description}`;
+    const shareUrl = new URL(window.location.href);
+    shareUrl.searchParams.set("activity", name);
+    const encodedEmailSubject = encodeURIComponent(shareTitle);
+    const encodedEmailBody = encodeURIComponent(
+      `${shareText}\n\nLearn more: ${shareUrl.toString()}`
+    );
+
     // Create activity tag
     const tagHtml = `
       <span class="activity-tag" style="background-color: ${typeInfo.color}; color: ${typeInfo.textColor}">
@@ -569,6 +578,31 @@ document.addEventListener("DOMContentLoaded", () => {
         `
         }
       </div>
+      <div class="share-actions">
+        <button
+          class="share-button"
+          data-action="share"
+          type="button"
+        >
+          Share
+        </button>
+        <button
+          class="share-button"
+          data-action="copy"
+          type="button"
+        >
+          Copy Link
+        </button>
+        <a
+          class="share-button share-link-button"
+          data-action="email"
+          href="mailto:?subject=${encodedEmailSubject}&body=${encodedEmailBody}"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Email
+        </a>
+      </div>
     `;
 
     // Add click handlers for delete buttons
@@ -586,6 +620,44 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
     }
+
+    const shareButtons = activityCard.querySelectorAll(".share-button");
+    shareButtons.forEach((button) => {
+      button.addEventListener("click", async (event) => {
+        const action = event.currentTarget.dataset.action;
+        const url = shareUrl.toString();
+        const title = shareTitle;
+        const text = shareText;
+
+        if (action === "share") {
+          if (navigator.share) {
+            try {
+              await navigator.share({ title, text, url });
+            } catch (error) {
+              if (error.name !== "AbortError") {
+                showMessage("Sharing failed. Please try again.", "error");
+              }
+            }
+          } else {
+            try {
+              await navigator.clipboard.writeText(url);
+              showMessage("Activity link copied to clipboard.", "success");
+            } catch (error) {
+              showMessage("Unable to copy link. Please copy it manually.", "error");
+            }
+          }
+        }
+
+        if (action === "copy") {
+          try {
+            await navigator.clipboard.writeText(url);
+            showMessage("Activity link copied to clipboard.", "success");
+          } catch (error) {
+            showMessage("Unable to copy link. Please copy it manually.", "error");
+          }
+        }
+      });
+    });
 
     activitiesList.appendChild(activityCard);
   }
